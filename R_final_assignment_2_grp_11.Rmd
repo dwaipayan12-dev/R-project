@@ -1,0 +1,239 @@
+**Assignment: Differential Expression Analysis for Bulk-RNA seq data**
+
+1. Dwaipayan Math
+2. Aanandita Sahu
+3. Abhradeep Mandal
+4. Riya Pal
+5. Shreyasri Das Adhikary
+
+**Part A: Dataset Selection**
+
+**1. What is the NCBI GEO database?**
+
+Ans:- The NCBI GEO (Gene Expression Omnibus) is a public database that stores and provides access to high-throughput gene expression and other functional genomics data submitted by researchers. It allows users to search, download, and analyze datasets from experiments like microarrays, RNA-seq, and ChIP-seq.
+
+**2. What is the GEO Series ID (e.g., GSEXXXXX) of the dataset you chose?**
+Ans: - GSE264441
+**3. Explain the experiment and the dataset and why did you choose it?**
+
+Ans: - GSE264441 is a bulk RNA-seq dataset generated from mouse brain astrocytes. The experiment investigates how the depletion of CCR2+ macrophages affects the astrocyte transcriptome in the context of neuroinflammation. The dataset includes astrocytes isolated from mice treated with diphtheria toxin (DTX) to deplete CCR2+ macrophages (DTX group) and control-treated mice (Control group).
+
+Why I chose this dataset:
+
+It is a well-structured, bulk RNA-seq dataset suitable for DESeq2 analysis.
+
+The experiment clearly compares two biological conditions (Control vs DTX), making it ideal for identifying differentially expressed genes (DEGs).
+
+It has raw counts, which is essential for DESeq2.
+
+It relates to neuroimmunology, a field of high biomedical relevance.
+
+**4. What are the number of different groups in the dataset?**
+
+Ans :- There are 2 groups in the dataset:
+
+Control group: Astrocytes from mice with normal CCR2+ macrophage presence.
+DTX group: Astrocytes from mice in which CCR2+ macrophages were depleted using diphtheria toxin.
+
+Each group has 3 biological replicates, totaling 6 samples.
+
+**Part B: Loading dataset and DESeq2**
+
+```{r}
+# STEP 1: Load count matrix
+count_data <- read.table("C:/Users/Dwaipayan/Downloads/GSE264441_raw_counts_CCR2DTR_AstroRNAseq.txt.gz", 
+                         header = TRUE, 
+                         sep = "\t", 
+                         row.names = 1)
+
+# Check dimensions and column names
+dim(count_data)
+colnames(count_data)
+# Display first 10 rows and all columns
+head(count_data, 10)
+
+
+```
+```{r}
+#Q.Make a data frame for any two different conditions and their replicates.Make sure to include control as one of the conditions if possible. Justify your choice of the condition.
+
+# Sample names from count_data
+samples <- colnames(count_data)
+
+# Extracting condition from sample names using pattern
+condition <- ifelse(grepl("CtrlCCR2", samples), "Control", "DTX")
+
+# Creating data frame
+metadata <- data.frame(row.names = samples,
+                       condition = factor(condition))
+
+# Viewing it
+metadata
+
+```
+Justification:- I chose the two conditions Control and DTX because they represent the core comparison in the experiment: astrocytes from mice with normal immune status (Control) versus astrocytes from mice with CCR2+ macrophage depletion (DTX). This comparison directly addresses the study’s objective of understanding how immune cell presence influences astrocyte gene expression during neuroinflammation.
+```{r}
+#Q. Pre-process the dataset for DESeq2 analysis.
+# Step 1: Install BiocManager (from CRAN)
+# install.packages("BiocManager")
+
+# Step 2: Use BiocManager to install DESeq2 and shrinkage package
+BiocManager::install(c("DESeq2", "apeglm"))
+
+# Step 3: Load the libraries
+library(DESeq2)
+library(apeglm)
+# Load the DESeq2 package
+library(DESeq2)
+
+keep <- rowSums(count_data) >= 10
+filtered_counts <- count_data[keep, ] #Filtered genes with low counts
+
+#Create DESeq2 dataset object
+dds <- DESeqDataSetFromMatrix(countData = count_data,
+                              colData = metadata,
+                              design = ~ condition)
+
+# Check the object
+dds
+```
+```{r}
+
+#Q. Run DESeq2 on pre-processed data and display the results.
+# Run DESeq2 analysis
+dds <- DESeq(dds)
+
+# Get results (contrast between DTX vs. Control)
+res <- results(dds, contrast = c("condition", "DTX", "Control"))
+
+# View summary of results
+summary(res)
+
+# View top differentially expressed genes
+head(res[order(res$padj), ])
+
+```
+Part C
+```{r}
+# Filter for significant genes (padj < 0.05)
+significant_genes <- res[which(res$padj < 0.05), ]
+
+# Count how many significant genes
+n_significant_genes <- nrow(significant_genes)
+n_significant_genes
+
+```
+```{r}
+# Filter out rows with NA in 'padj' and select genes with adjusted p-value < 0.05
+sig_res <- res[!is.na(res$padj) & res$padj < 0.05, ]
+
+# Sort results by log2FoldChange
+sorted_res <- sig_res[order(sig_res$log2FoldChange), ]
+
+# Top 5 upregulated genes (highest log2FoldChange)
+top_upregulated <- head(sorted_res[sorted_res$log2FoldChange > 0, ], 5)
+
+# Top 5 downregulated genes (lowest log2FoldChange)
+top_downregulated <- head(sorted_res[sorted_res$log2FoldChange < 0, ], 5)
+
+# View the results (log2FoldChange and padj for top upregulated and downregulated genes)
+top_upregulated[, c("log2FoldChange", "padj")]
+top_downregulated[, c("log2FoldChange", "padj")]
+```
+1. Xist (X-inactive specific transcript):
+Xist is a long non-coding RNA that plays a critical role in X-chromosome inactivation in female mammals. It coats one of the two X chromosomes, triggering epigenetic silencing and ensuring dosage compensation between XX females and XY males. Its differential expression often reflects changes in sex chromosome regulation, developmental stage, or epigenetic control.
+
+2. Tsix (antisense transcript of Xist):
+Tsix is the antisense regulator of Xist and acts to repress Xist expression. It is important during early embryonic development for ensuring that the correct X chromosome is inactivated in females. The Tsix/Xist regulatory pair ensures balanced gene expression from X chromosomes and is a key component of X-chromosome counting and choice.
+
+3. Phlda1 (Pleckstrin Homology-Like Domain, Family A, Member 1):
+Phlda1 is a protein-coding gene involved in cell survival, apoptosis regulation, and stress response. It is thought to play a protective role in neuronal injury and immune response pathways. Its upregulation or downregulation can indicate cellular stress adaptation or injury response, which might be relevant in the DTX-treated (immune cell-depleted) condition in your dataset.
+
+
+```{r}
+# Run PCA on the count data
+vsd <- vst(dds, blind = FALSE)  # Variance Stabilizing Transformation for better visualization
+pca_data <- plotPCA(vsd, intgroup = "condition", returnData = TRUE)
+
+# Plot PCA
+library(ggplot2)
+ggplot(pca_data, aes(x = PC1, y = PC2, color = condition)) +
+  geom_point(size = 3) +
+  labs(title = "PCA Plot of DTX vs Control", x = "PC1", y = "PC2") +
+  theme_minimal()
+
+```
+
+The groups separate well (Control vs. DTX), it indicates that the gene expression profiles of the two conditions are distinct.
+The significance of the PCA plot is that it helps assess if the experimental groups show clear clustering, suggesting biological differences between conditions. It’s useful for quality control as well.
+
+```{r}
+
+# Ensure that 'res' contains padj (adjusted p-values)
+res$padj <- p.adjust(res$pvalue, method = "BH")  # Apply Benjamini-Hochberg adjustment if it's not already present
+
+```
+```{r}
+# Prepare the volcano data frame with necessary columns
+volcano_data <- as.data.frame(res)
+volcano_data$gene <- rownames(volcano_data)
+
+# Ensure it has the required columns
+```
+
+
+```{r}
+library(ggplot2)
+library(ggrepel)
+
+# Create the volcano plot
+volcano_plot <- ggplot(volcano_data, aes(x = log2FoldChange, y = -log10(padj), label = gene)) +
+  geom_point(aes(color = padj < 0.05, size = abs(log2FoldChange)), alpha = 0.6) +
+  scale_color_manual(values = c("gray", "red")) +
+  geom_text_repel(data = volcano_data[volcano_data$gene %in% c("Ddx3y", "Xist", "Eif2s3y"), ], 
+                  aes(label = gene), 
+                  box.padding = 0.5, 
+                  point.padding = 0.5, 
+                  segment.color = "gray") +
+  labs(x = "Log2 Fold Change", y = "-Log10(p-value)", title = "Volcano Plot")
+
+# Display the volcano plot
+print(volcano_plot)
+```
+A volcano plot visually identifies upregulated and downregulated genes in one plot, making it easier to spot the most important genes in your dataset.
+
+**Part D:Interpretation**
+
+**Q1.What challenges or issues did you encounter during the analysis?**
+Ans:-
+Here are some common challenges we faced during RNA-seq analysis using DESeq2-:
+
+1.Data Quality Issues: Sometimes, the data had low-quality reads, or certain genes had very low counts, leading to difficulties in interpretation.
+
+Solution: Filters were applied to remove low-count genes, ensuring that only informative genes are included in the analysis.
+
+2.Memory/Computational Limits: Large datasets required substantial computational resources, and running DESeq2 on such data sometimes caused memory issues.
+
+Solution: Efficient data processing and using batch processing for large datasets.
+
+3.Metadata Mismatch: Ensuring that the metadata (e.g., experimental conditions) aligns perfectly with the count data (samples) is crucial.
+
+Solution: Careful alignment of metadata columns with count data.
+
+4.Complexity of Statistical Models: Understanding and properly interpreting results from statistical models like DESeq2 was challenging for us being new to RNA-seq data analysis.
+
+Solution: Thorough understanding of the model assumptions and using appropriate filtering techniques.
+5. Finding right dataset with raw counts was difficult.
+
+**Q2.What assumptions does DESeq2 make about RNA-seq count data? **
+Ans:-DESeq2 makes several important assumptions about RNA-seq data:
+
+1.Count Data is Poisson Distributed: DESeq2 assumes that the counts for each gene follow a negative binomial distribution (a generalization of the Poisson distribution that accounts for overdispersion), which is suitable for RNA-seq data where variance exceeds the mean.
+
+2.Independence of Samples: DESeq2 assumes that the samples are independent of each other. This means there should not be any hidden structure (e.g., batch effects) unless specifically included in the model.
+
+3.Size Factor Normalization: DESeq2 normalizes count data based on the library size of each sample. The assumption here is that most genes are not differentially expressed and can be used to estimate size factors (i.e., scaling factors for each sample).
+
+4.Differential Expression is Not Dependent on Other Factors: DESeq2 assumes that differential expression results are primarily driven by the factor you're testing (e.g., condition: DTX vs. Control), and it does not explicitly control for other covariates unless they are included in the model design.
+
+
