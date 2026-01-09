@@ -49,8 +49,11 @@ Visual summaries provide intuitive interpretation of results
 
 ## 📁 Repository Structure
 ├── R_final_assignment_2_grp_11.Rmd   # Main analysis file
+<br>
 ├── README.md                        # Project documentation
+<br>
 ├── data/                            # Input count data (if provided)
+<br>
 ├── results/                         # Plots and output tables
 
 ## 🚀 How to Run the Project
