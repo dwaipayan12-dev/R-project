@@ -52,9 +52,9 @@ Visual summaries provide intuitive interpretation of results
 <br>
 ├── README.md                        # Project documentation
 <br>
-├── data/                            # Input count data (if provided)
+├── input/                            # Input count data (if provided)
 <br>
-├── results/                         # Plots and output tables
+├── data/                         # Plots and output tables
 
 ## 🚀 How to Run the Project
 
